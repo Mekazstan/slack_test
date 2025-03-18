@@ -1,2 +1,4 @@
 /venv
 .env
+slack-forward-bot
+slack-forward-bot.pub
