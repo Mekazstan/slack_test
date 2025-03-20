@@ -1,27 +1,18 @@
 import os
 from dotenv import load_dotenv
 from slack_bolt import App
-from flask import Flask, request
-from slack_bolt.adapter.flask import SlackRequestHandler
+from slack_bolt.adapter.socket_mode import SocketModeHandler
 import logging
 
-# Load environment variables
 load_dotenv()
 
-# Slack app credentials
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
-# Initialize Slack app
 app = App(token=SLACK_BOT_TOKEN)
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
-flask_app = Flask(__name__)
-handler = SlackRequestHandler(app)
 
 # Define the form blocks
 form_blocks = [
@@ -163,15 +154,15 @@ form_blocks = [
     },
     {
         "type": "input",
-        "block_id": "passport_id_number",
+        "block_id": "comment_id_number",
         "label": {
             "type": "plain_text",
-            "text": "Passport ID number"
+            "text": "Comment"
         },
         "element": {
             "type": "plain_text_input",
-            "action_id": "passport_id_number_input",
-            "initial_value": "000-000"
+            "action_id": "comment_id_number_input",
+            "initial_value": "Type your comment here."
         }
     },
     {
@@ -251,7 +242,7 @@ def handle_confirm_forward(ack, body, client, logger):
     email = values["email"]["email_input"]["value"]
     phone_number = values["phone_number"]["phone_number_input"]["value"]
     car_number = values["car_number"]["car_number_input"]["value"]
-    passport_id_number = values["passport_id_number"]["passport_id_number_input"]["value"]
+    comment = values["comment_id_number"]["comment_id_number_input"]["value"]
     driver_license_number = values["driver_license_number"]["driver_license_number_input"]["value"]
     vehicle_model = values["vehicle_model"]["vehicle_model_input"]["value"]
 
@@ -275,12 +266,12 @@ def handle_confirm_forward(ack, body, client, logger):
     message += f"*Email:* {email}\n"
     message += f"*Phone Number:* {phone_number}\n"
     message += f"*Car Number:* {car_number}\n"
-    message += f"*Passport ID Number:* {passport_id_number}\n"
+    message += f"*Comment:* {comment}\n"
     message += f"*Driver License Number:* {driver_license_number}\n"
     message += f"*Vehicle Model:* {vehicle_model}\n"
     message += f"*Excess URL:* {excess_url}\n"
 
-    # Send the confirmation message to another channel
+     # Send the confirmation message to another channel
     target_channel_id = CHANNEL_ID
     try:
         client.chat_postMessage(channel=target_channel_id, text=message)
@@ -295,15 +286,7 @@ def handle_confirm_forward(ack, body, client, logger):
     except Exception as e:
         logger.error(f"Error sending confirmation to user: {e}")
 
-# Flask route for Slack events
-@flask_app.route("/slack/events", methods=["POST"])
-def slack_events():
-    try:
-        return handler.handle(request)
-    except Exception as e:
-        logger.error(f"Error handling Slack event: {e}")
-        return "Error", 500
-
-# Run the Flask app
 if __name__ == "__main__":
-    flask_app.run(host="0.0.0.0", port=3000)
+    handler = SocketModeHandler(app, SLACK_APP_TOKEN)
+    logging.info("Starting Socket Mode Handler")
+    handler.start()
